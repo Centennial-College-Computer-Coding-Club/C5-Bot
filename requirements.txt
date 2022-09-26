@@ -1,0 +1,9 @@
+# Base tools
+isort
+flake8
+flake8-docstrings
+pre-commit
+black
+
+# Libraries
+disnake
