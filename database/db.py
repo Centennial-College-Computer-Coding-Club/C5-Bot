@@ -19,6 +19,11 @@ def create_db(path=db_path):
                           poll_id INTEGER,
                           data TEXT
                        )''')
+        cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS qotd(
+                            data TEXT,
+                            used INTEGER
+                        )''')
         db.commit()
 
 
@@ -97,6 +102,35 @@ def remove_poll(poll_id: str):
         cursor.execute('''
                        DELETE FROM polls WHERE poll_id = ?
                        ''', (poll_id,))
+        db.commit()
+
+
+# QUESTION OF THE DAY
+def add_qotd(data: str, used: int):
+    with sqlite3.connect(db_path) as db:
+        cursor = db.cursor()
+        cursor.execute('''
+                       INSERT INTO qotd(data, used)
+                       VALUES(?, ?)
+                       ''', (data, used))
+        db.commit()
+
+
+def get_random_qotd():
+    with sqlite3.connect(db_path) as db:
+        cursor = db.cursor()
+        cursor.execute('''
+                       SELECT data FROM qotd WHERE used = 0 ORDER BY RANDOM() LIMIT 1
+                       ''')
+        return cursor.fetchone()
+
+
+def reset_qotd():
+    with sqlite3.connect(db_path) as db:
+        cursor = db.cursor()
+        cursor.execute('''
+                       UPDATE qotd SET used = 0
+                       ''')
         db.commit()
 
 

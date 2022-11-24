@@ -4,6 +4,8 @@ from disnake import ApplicationCommandInteraction, Member, VoiceChannel, Role, M
 from disnake.ext import commands
 import json
 
+from disnake.ext.commands import Greedy
+
 
 def duration_converter(duration: str) -> int:
     if duration[-1] == "s":
@@ -185,14 +187,18 @@ class Moderation(commands.Cog):
         except Exception as e:
             await inter.response.send_message(f"Error adding/removing role: {e}", ephemeral=True)
 
-    @commands.slash_command(name="roles", description="Lists all roles.")
-    async def roles(self, inter: ApplicationCommandInteraction):
-        """Lists all roles."""
+    @commands.slash_command(name="roles", description="Add a role to multiple users.")
+    async def roles(self, inter: ApplicationCommandInteraction, role: Role, members: str):
+        """Add a role to multiple users."""
         try:
-            roles = [role.name for role in inter.guild.roles]
-            await inter.response.send_message(f"Roles: {', '.join(roles)}", ephemeral=True)
+            members = members.split()
+            for member in members:
+                member = await self.bot.guilds[0].fetch_member(int(member))
+                await member.add_roles(role)
+                await self.log(inter, "added role", member, reason=role.name)
+            await inter.response.send_message(f"{role.name} has been added to {members}.", ephemeral=True)
         except Exception as e:
-            await inter.response.send_message(f"Error listing roles: {e}", ephemeral=True)
+            await inter.response.send_message(f"Error adding role: {e}", ephemeral=True)
 
     @commands.slash_command(name="slowmode", description="Sets the slowmode of a channel.")
     async def slowmode(self, inter: ApplicationCommandInteraction, seconds: int):

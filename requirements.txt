@@ -7,3 +7,4 @@ black
 
 # Libraries
 disnake
+python-dotenv
