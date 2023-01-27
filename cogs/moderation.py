@@ -3,8 +3,7 @@
 from disnake import ApplicationCommandInteraction, Member, VoiceChannel, Role, Message
 from disnake.ext import commands
 import json
-
-from disnake.ext.commands import Greedy
+import re
 
 
 def duration_converter(duration: str) -> int:
@@ -211,44 +210,45 @@ class Moderation(commands.Cog):
             await inter.response.send_message(f"Error setting slowmode: {e}", ephemeral=True)
 
     @commands.slash_command(name="whitelist", description="Adds a domain link or invite code to the whitelist.")
-    async def whitelist(self, inter: ApplicationCommandInteraction, *, domain: str):
+    async def whitelist(self, inter: ApplicationCommandInteraction, *, link: str):
         """Adds a domain link or invite code to the whitelist."""
         try:
-            if domain.startswith("http"):
-                domain = domain.split("/")[2]
-            if domain.startswith("www."):
-                domain = domain[4:]
-            if domain.startswith("discord.gg"):
-                domain = domain.split("/")[1]
-            if domain in self.bot.whitelist:
-                await inter.response.send_message(f"{domain} is already whitelisted.", ephemeral=True)
+            match = re.search(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(.+)",
+                              link)
+            if not match:
+                raise Exception("Invalid invite link.")
+            invite = match.group(10)
+            if invite in self.bot.whitelist or invite in await inter.guild.invites():
+                await inter.response.send_message(f"{invite} is already whitelisted.", ephemeral=True)
             else:
-                self.bot.whitelist.append(domain)
+                self.bot.whitelist.append(invite)
                 with open("whitelist.json", "w") as f:
                     json.dump({"whitelist": self.bot.whitelist}, f)
-                await self.log(inter, "whitelisted", reason=domain)
-                await inter.response.send_message(f"{domain} has been whitelisted.", ephemeral=True)
+                await self.log(inter, "whitelisted", reason=link)
+                await inter.response.send_message(f"{link} has been whitelisted.", ephemeral=True)
         except Exception as e:
-            await inter.response.send_message(f"Error whitelisting {domain}: {e}", ephemeral=True)
+            await inter.response.send_message(f"Error whitelisting {link}: {e}", ephemeral=True)
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
         """Checks if a message is a command."""
         if message.author.bot:
             return
-        elif "discord.gg" in message.content:
-            if message.content.split("/")[-1] not in self.bot.whitelist:
+        match = re.search(r"(https:\/\/)?(www\.)?(((discord(app)?)?\.com\/invite)|((discord(app)?)?\.gg))\/(.+)",
+                          message.content)
+        if match:
+            if message.author.guild_permissions.manage_channels:
+                return
+            invite_code = match.group(10)
+            if invite_code in await message.guild.invites():
+                return
+            elif invite_code not in self.bot.whitelist:
                 await message.delete()
                 await message.channel.send(f"{message.author.mention}, you are not allowed to post invite links here.",
                                            delete_after=5)
                 await self.log(message,
                                f"sent an invite link that was blocked in {message.channel.mention}",
                                reason=message.content)
-        # elif "http" in message.content:
-        #     if message.content.split("/")[2] not in self.bot.whitelist:
-        #         await message.delete()
-        #         await message.channel.send(f"{message.author.mention}, you are not allowed to post links here.",
-        #                                    delete_after=5)
         if message.content.startswith(self.bot.command_prefix):
             await self.bot.process_commands(message)
 

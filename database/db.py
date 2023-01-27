@@ -57,9 +57,8 @@ def remove_program(program_code):
 
 
 # POLLS
-def add_poll(poll_id: str, poll):
-    option_data = {item.name: 0 for item in poll.options}
-    data = {"title": poll.title, "description": poll.description, "options": option_data, "voted": []}
+def add_poll(poll_id: int, poll):
+    data = {"title": poll.title, "question": poll.question, "options": poll.options}
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
         cursor.execute('''
@@ -69,7 +68,7 @@ def add_poll(poll_id: str, poll):
         db.commit()
 
 
-def get_poll(poll_id: str):
+def get_poll(poll_id: int):
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
         cursor.execute('''
@@ -87,7 +86,8 @@ def get_polls():
         return cursor.fetchall()
 
 
-def update_poll(poll_id: str, data: dict):
+def update_poll(poll_id: int, poll):
+    data = {"title": poll.title, "question": poll.question, "options": poll.options}
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
         cursor.execute('''
@@ -96,7 +96,7 @@ def update_poll(poll_id: str, data: dict):
         db.commit()
 
 
-def remove_poll(poll_id: str):
+def remove_poll(poll_id: int):
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
         cursor.execute('''
@@ -123,6 +123,15 @@ def get_random_qotd():
                        SELECT data FROM qotd WHERE used = 0 ORDER BY RANDOM() LIMIT 1
                        ''')
         return cursor.fetchone()
+
+
+def update_qotd(data: str):
+    with sqlite3.connect(db_path) as db:
+        cursor = db.cursor()
+        cursor.execute('''
+                       UPDATE qotd SET used = 1 WHERE data = ?
+                       ''', (data,))
+        db.commit()
 
 
 def reset_qotd():
